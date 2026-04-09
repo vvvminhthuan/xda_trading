@@ -1,0 +1,33 @@
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE files
+.idea/
+.vscode/ 
+*.sublime-project
+*.sublime-workspace 
+
+# OS files
+.DS_Store
+Thumbs.db   
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
