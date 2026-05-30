@@ -74,21 +74,23 @@ class SupportResistance(BaseIndicator):
             lambda x: x.iloc[window//2] if x.iloc[window//2] == x.min() else np.nan
         )
         
-    def get_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def get_signal(self, df: pd.DataFrame, symbol: str = "") -> Dict[str, Any]:
         """Phân tích tín hiệu Support/Resistance"""
         if len(df) < 5:
             return {'score': 0, 'sr_condition': 'UNKNOWN', 'reasons': []}
         
         latest = df.iloc[-1]
-        prev = df.iloc[-2]
         score = 0
         reasons = []
         sr_condition = 'NEUTRAL'
         
         current_price = latest['close']
+        nearest_fib = None
+        nearest_swing_high = None
+        nearest_swing_low = None
         
         # 1. Pivot Points Analysis
-        if 'PP' in df.columns:
+        if self.has_columns(df, ['PP', 'R1', 'S1']):
             pp = latest['PP']
             r1 = latest['R1'] 
             s1 = latest['S1']
@@ -125,10 +127,11 @@ class SupportResistance(BaseIndicator):
                         score += 35
                         reasons.append(f"Test Fibonacci {fib_ratio}% ({fib_level:.2f})")
                         sr_condition = 'FIBONACCI_TEST'
+                        nearest_fib = fib_level
                         break
         
         # 3. Swing High/Low Analysis
-        if 'SwingHigh' in df.columns and 'SwingLow' in df.columns:
+        if self.has_columns(df, ['SwingHigh', 'SwingLow']):
             # Tìm nearest swing levels
             recent_df = df.tail(20)  # 20 nến gần nhất
             
@@ -142,6 +145,7 @@ class SupportResistance(BaseIndicator):
                     score += 25
                     reasons.append(f"Test Swing High ({swing_high:.2f})")
                     sr_condition = 'SWING_RESISTANCE'
+                    nearest_swing_high = swing_high
                     break
             
             for swing_low in recent_swing_lows:
@@ -150,6 +154,7 @@ class SupportResistance(BaseIndicator):
                     score += 25
                     reasons.append(f"Test Swing Low ({swing_low:.2f})")
                     sr_condition = 'SWING_SUPPORT'
+                    nearest_swing_low = swing_low
                     break
         
         # 4. Multiple timeframe confluence
@@ -159,13 +164,52 @@ class SupportResistance(BaseIndicator):
             confluence_bonus = 20
             reasons.append("Confluence multiple S/R levels")
         
-        return {
+        result = {
             'score': score + confluence_bonus,
             'sr_condition': sr_condition, 
             'reasons': reasons,
             'key_levels': {
                 'pivot': latest.get('PP'),
                 'r1': latest.get('R1'),
-                's1': latest.get('S1')
+                's1': latest.get('S1'),
+                'nearest_fib': nearest_fib,
+                'nearest_swing_high': nearest_swing_high,
+                'nearest_swing_low': nearest_swing_low,
+                'poc': latest.get('POC'),
+                'vah': latest.get('VAH'),
+                'val': latest.get('VAL'),
+                'current_price': current_price,
             }
         }
+        self._print_debug_signal(
+            current_price, latest, result, nearest_fib,
+            nearest_swing_high, nearest_swing_low, confluence_bonus, symbol
+        )
+        return result
+
+    def _print_debug_signal(
+        self,
+        current_price: float,
+        latest: pd.Series,
+        signal: Dict[str, Any],
+        nearest_fib,
+        nearest_swing_high,
+        nearest_swing_low,
+        confluence_bonus: int,
+        symbol: str = "",
+    ):
+        """In chi tiết giá trị support/resistance và điểm vừa được tính."""
+        print(
+            f"{self._debug_prefix(symbol)}🧱 INDICATOR SR | "
+            f"price={self._debug_number(current_price)} "
+            f"pp={self._debug_number(latest.get('PP'))} "
+            f"r1={self._debug_number(latest.get('R1'))} "
+            f"s1={self._debug_number(latest.get('S1'))} "
+            f"nearest_fib={self._debug_number(nearest_fib)} "
+            f"nearest_swing_high={self._debug_number(nearest_swing_high)} "
+            f"nearest_swing_low={self._debug_number(nearest_swing_low)} "
+            f"confluence_bonus={confluence_bonus} "
+            f"score={signal.get('score', 0)} "
+            f"condition={signal.get('sr_condition', 'UNKNOWN')} "
+            f"reasons={self._debug_reasons(signal.get('reasons', []))}"
+        )

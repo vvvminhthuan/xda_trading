@@ -6,11 +6,11 @@ Chứa các tham số mặc định cho từng indicator
 # app/constants/indicator_constants.py
 
 # EMA Settings
-EMA_FAST = 12    # EMA ngắn hạn (12 periods)
+EMA_FAST = 7    # EMA ngắn hạn (12 periods) ->7
 EMA_SLOW = 26    # EMA dài hạn (26 periods)
 
 # MACD Settings  
-MACD_FAST = 12   # Đường EMA nhanh của MACD
+MACD_FAST = 7   # Đường EMA nhanh của MACD 12->7
 MACD_SLOW = 26   # Đường EMA chậm của MACD  
 MACD_SIGNAL = 9  # Đường tín hiệu của MACD
 
@@ -18,6 +18,8 @@ MACD_SIGNAL = 9  # Đường tín hiệu của MACD
 SMA_FAST = 20
 SMA_SLOW = 50
 RSI_PERIOD = 14
+RSI_OVERSOLD = 30
+RSI_OVERBOUGHT = 70
 STOCH_K = 14
 STOCH_D = 3
 BB_PERIOD = 20

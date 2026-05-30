@@ -5,7 +5,7 @@ Models cho tín hiệu trading
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 class SignalType(Enum):
@@ -35,12 +35,15 @@ class TradingSignal:
     strength: SignalStrength
     strategy_name: str
     timestamp: datetime
+    score: float
+    quantity: float
     
     # Thông tin chi tiết
     indicators: Dict[str, Any]
     notes: str = ""
     risk_reward_ratio: Optional[float] = None
     position_size: Optional[float] = None
+    reason: str=""
     
     def __post_init__(self):
         """Tính toán risk/reward ratio"""
@@ -74,11 +77,44 @@ class TradingSignal:
             'stop_loss': self.stop_loss,
             'take_profit': self.take_profit,
             'confidence_score': self.confidence_score,
+            'score': self.score,
+            'quantity': self.quantity,
             'strength': self.strength.value,
             'strategy_name': self.strategy_name,
             'timestamp': self.timestamp.isoformat(),
             'risk_reward_ratio': self.risk_reward_ratio,
             'position_size': self.position_size,
             'indicators': self.indicators,
-            'notes': self.notes
+            'notes': self.notes,
+            'reason': self.reason
         }
+
+    def to_embed_fields(self) -> List[Dict[str, Any]]:
+        """Tạo danh sách field tiếng Việt để gửi tín hiệu lên Discord embed."""
+        fields = [
+            {"name": "Symbol", "value": self.symbol, "inline": True},
+            {"name": "Timeframe", "value": self.timeframe, "inline": True},
+            {"name": "Tín hiệu", "value": self.signal_type.value, "inline": True},
+            {"name": "Entry", "value": str(self.entry_price), "inline": True},
+            {"name": "Stop Loss", "value": str(self.stop_loss), "inline": True},
+            {"name": "Take Profit", "value": str(self.take_profit), "inline": True},
+            {"name": "Quantity", "value": str(self.quantity), "inline": True},
+            {"name": "Risk/Reward", "value": f"{self.risk_reward_ratio:.2f}", "inline": True},
+            {"name": "Confidence", "value": f"{self.confidence_score:.1f}%", "inline": True},
+            {"name": "Score", "value": str(self.score), "inline": True},
+            {"name": "Độ mạnh", "value": self.strength.name, "inline": True},
+            {"name": "Strategy", "value": self.strategy_name, "inline": True},
+            {"name": "Lý do", "value": self.reason or self.notes or "Không có ghi chú", "inline": False},
+        ]
+        entry_basis = self.indicators.get("entry_basis") if isinstance(self.indicators, dict) else None
+        if entry_basis:
+            fields.insert(4, {"name": "Điểm vào tốt", "value": str(entry_basis), "inline": True})
+        trend_context = self.indicators.get("trend_context") if isinstance(self.indicators, dict) else None
+        if trend_context:
+            from app.services.discord.formatters import format_trend_context
+
+            fields.insert(5, {"name": "Bối cảnh trend", "value": format_trend_context(trend_context), "inline": True})
+        entry_reference = self.indicators.get("entry_reference_level") if isinstance(self.indicators, dict) else None
+        if entry_reference:
+            fields.insert(6, {"name": "Level tham chiếu", "value": str(entry_reference), "inline": True})
+        return fields

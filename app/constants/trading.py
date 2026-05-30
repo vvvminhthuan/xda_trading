@@ -8,7 +8,7 @@ TIMEFRAMES = helps.get_env_list('TIMEFRAMES', ['1m', '3m', '1h', '2h'])
 MAX_CANDLES_LIMIT = helps.get_env_int('MAX_CANDLES_LIMIT', 1000)
 SUPPORTED_EXCHANGES = ['binance', 'okx', 'bybit', 'kucoin']
 
-# Account & Risk Management
+# Account & Risk Management => Dùng ở core.trading
 ACCOUNT_BALANCE = helps.get_env_float('ACCOUNT_BALANCE', 1000.0)
 RISK_PER_TRADE_PERCENT = helps.get_env_float('RISK_PER_TRADE_PERCENT', 1.0)
 MIN_WIN_PROBABILITY_TO_TRADE = helps.get_env_float('MIN_WIN_PROBABILITY_TO_TRADE', 70.0)

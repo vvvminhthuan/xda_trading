@@ -1,4 +1,4 @@
-from .trading_constants import *
+from .trading import *
 from .indicator_constants import *
 from .discord_constants import *
 from .app_constants import *
@@ -41,10 +41,3 @@ def validate_config():
     print(f"📊 Exchange: {EXCHANGE_ID} ({'Testnet' if USE_TESTNET or BINANCE_SANDBOX else 'Live'})")
     print(f"💰 Symbol: {SYMBOL}")
     print(f"📱 Paper Trading: {'ON' if ENABLE_PAPER_TRADING else 'OFF'}")
-
-# Auto-validate on import
-if __name__ != "__main__":
-    try:
-        validate_config()
-    except ValueError as e:
-        print(f"❌ Config validation failed: {e}")

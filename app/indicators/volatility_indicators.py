@@ -36,7 +36,7 @@ class VolatilityIndicators(BaseIndicator):
         
         return df
     
-    def get_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def get_signal(self, df: pd.DataFrame, symbol: str = "") -> Dict[str, Any]:
         """Phân tích tín hiệu từ volatility"""
         if len(df) < 3:
             return {'score': 0, 'volatility_state': 'UNKNOWN', 'reasons': []}
@@ -46,13 +46,14 @@ class VolatilityIndicators(BaseIndicator):
         score = 0
         reasons = []
         volatility_state = 'NORMAL'
+        direction = 'NEUTRAL'
         
         bb_upper = f'BBU_{BOLLINGER_PERIOD}_{BOLLINGER_STD}'
         bb_lower = f'BBL_{BOLLINGER_PERIOD}_{BOLLINGER_STD}'
         bb_middle = f'BBM_{BOLLINGER_PERIOD}_{BOLLINGER_STD}'
         
         # 1. Bollinger Bands Squeeze/Expansion
-        if all(col in df.columns for col in [bb_upper, bb_lower, bb_middle]):
+        if self.has_columns(df, [bb_upper, bb_lower, bb_middle]):
             bb_width = latest[bb_upper] - latest[bb_lower]
             bb_width_prev = prev[bb_upper] - prev[bb_lower]
             
@@ -61,11 +62,13 @@ class VolatilityIndicators(BaseIndicator):
                 score += 30
                 reasons.append("Chạm dải dưới Bollinger (Support động)")
                 volatility_state = 'SUPPORT_TEST'
+                direction = 'UP'
                 
             elif latest['high'] >= latest[bb_upper]:
                 score += 30
                 reasons.append("Chạm dải trên Bollinger (Resistance động)")
                 volatility_state = 'RESISTANCE_TEST'
+                direction = 'DOWN'
             
             # Bollinger Squeeze (Low volatility -> potential breakout)
             elif bb_width < bb_width_prev * 0.8:
@@ -83,35 +86,67 @@ class VolatilityIndicators(BaseIndicator):
         atr_col = f'ATR_{ATR_PERIOD}'
         atr_pct_col = f'ATRr_{ATR_PERIOD}'
         
-        if atr_pct_col in df.columns:
+        if self.has_columns(df, [atr_pct_col]):
             atr_pct = latest[atr_pct_col]
             
             # High volatility warning
             if atr_pct > 3.0:  # ATR > 3% của giá
                 score += 10
                 reasons.append(f"Biến động cao (ATR: {atr_pct:.2f}%)")
-                volatility_state = 'HIGH_VOLATILITY'
+                if volatility_state == 'NORMAL':
+                    volatility_state = 'HIGH_VOLATILITY'
                 
             # Low volatility (good for tight stops)
             elif atr_pct < 1.0:
                 score += 15
                 reasons.append(f"Biến động thấp (ATR: {atr_pct:.2f}%)")
-                volatility_state = 'LOW_VOLATILITY'
+                if volatility_state == 'NORMAL':
+                    volatility_state = 'LOW_VOLATILITY'
         
         # 3. Keltner Channel Analysis
-        if 'KCUe_20_2' in df.columns and 'KCLe_20_2' in df.columns:
+        if self.has_columns(df, ['KCUe_20_2', 'KCLe_20_2']):
             # Price breaking out of Keltner Channel
             if latest['close'] > latest['KCUe_20_2']:
                 score += 25
                 reasons.append("Breakout trên Keltner Channel")
+                direction = 'UP'
             elif latest['close'] < latest['KCLe_20_2']:
                 score += 25
                 reasons.append("Breakdown dưới Keltner Channel")
+                direction = 'DOWN'
         
-        return {
+        result = {
             'score': score,
             'volatility_state': volatility_state,
+            'direction': direction,
             'reasons': reasons,
             'atr_value': latest.get(atr_col, 0),
             'atr_percentage': latest.get(atr_pct_col, 0)
         }
+        self._print_debug_signal(latest, prev, result, symbol)
+        return result
+
+    def _print_debug_signal(self, latest: pd.Series, prev: pd.Series, signal: Dict[str, Any], symbol: str = ""):
+        """In chi tiết giá trị volatility và điểm vừa được tính."""
+        bb_upper = f'BBU_{BOLLINGER_PERIOD}_{BOLLINGER_STD}'
+        bb_lower = f'BBL_{BOLLINGER_PERIOD}_{BOLLINGER_STD}'
+        atr_col = f'ATR_{ATR_PERIOD}'
+        atr_pct_col = f'ATRr_{ATR_PERIOD}'
+        bb_width = None
+        if pd.notna(latest.get(bb_upper)) and pd.notna(latest.get(bb_lower)):
+            bb_width = latest.get(bb_upper) - latest.get(bb_lower)
+        print(
+            f"{self._debug_prefix(symbol)}🌊 INDICATOR VOLATILITY | "
+            f"close={self._debug_number(latest.get('close'))} "
+            f"bb_upper={self._debug_number(latest.get(bb_upper))} "
+            f"bb_lower={self._debug_number(latest.get(bb_lower))} "
+            f"bb_width={self._debug_number(bb_width)} "
+            f"atr={self._debug_number(latest.get(atr_col))} "
+            f"atr_pct={self._debug_number(latest.get(atr_pct_col))} "
+            f"keltner_upper={self._debug_number(latest.get('KCUe_20_2'))} "
+            f"keltner_lower={self._debug_number(latest.get('KCLe_20_2'))} "
+            f"score={signal.get('score', 0)} "
+            f"direction={signal.get('direction', 'NEUTRAL')} "
+            f"state={signal.get('volatility_state', 'UNKNOWN')} "
+            f"reasons={self._debug_reasons(signal.get('reasons', []))}"
+        )

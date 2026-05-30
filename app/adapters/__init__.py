@@ -1,1 +1,2 @@
-from .binance_adapter import BinanceAdapter
+from .binance import BinanceAdapter
+from .discord import DiscordAdapter

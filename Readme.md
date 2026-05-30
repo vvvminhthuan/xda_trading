@@ -59,3 +59,6 @@ Tạo file `.env`:
 
 # Kiểm tra environment
     poetry env info
+
+# Run
+    poetry run nodemon --exec "python -m app.main" --ext py --watch app

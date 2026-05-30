@@ -14,11 +14,12 @@ class BaseStrategy(ABC):
         self.name = self.__class__.__name__
         
     @abstractmethod
-    def analyze(self, market_data: Dict[str, pd.DataFrame]) -> Optional[TradingSignal]:
+    def analyze(self, market_data: Dict[str, pd.DataFrame], **kwargs) -> Optional[TradingSignal]:
         """
         Phân tích dữ liệu thị trường và tạo tín hiệu.
         Args:
             market_data: Dictionary chứa DataFrame cho mỗi timeframe
+            kwargs: Các tham số runtime bổ sung như symbol hoặc timeframe.
         Returns:
             TradingSignal object hoặc None
         """
